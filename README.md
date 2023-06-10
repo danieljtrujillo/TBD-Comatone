@@ -1,1 +1,1 @@
-Team Memento Mori for MIT Reality Hack 2023
+Team TBD for LA Tech Week Gen AI Hackathon
