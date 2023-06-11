@@ -6,15 +6,40 @@ public class MaterialSwitcher : MonoBehaviour
     public Material[] materials;
     private int currentMaterialIndex = 0;
     public float fadeTime = 1.0f;
-
-    private Material blackMaterial;
+    public GameObject objectToFade;
     private Renderer objectRenderer;
 
     void Start()
     {
         objectRenderer = GetComponent<Renderer>();
-        blackMaterial = new Material(Shader.Find("Standard"));
-        blackMaterial.color = Color.black;
+
+        // If the GameObject is active, start fading in.
+        if(gameObject.activeInHierarchy)
+        {
+            objectRenderer.material.color = new Color(objectRenderer.material.color.r, objectRenderer.material.color.g, objectRenderer.material.color.b, 0);
+            StartCoroutine(FadeInFromTransparent());
+        }
+    }
+
+    void OnEnable()
+    {
+        // If the GameObject is enabled, start fading in.
+        objectRenderer.material.color = new Color(objectRenderer.material.color.r, objectRenderer.material.color.g, objectRenderer.material.color.b, 0);
+        StartCoroutine(FadeInFromTransparent());
+    }
+
+    public IEnumerator FadeInFromTransparent()
+    {
+        Color nextColor = materials[currentMaterialIndex].color;
+        float t = 0.0f;
+
+        // Fade in to the next color
+        for (; t < fadeTime; t += Time.deltaTime)
+        {
+            float alpha = Mathf.Lerp(0, 1, t / fadeTime);
+            objectRenderer.material.color = new Color(nextColor.r, nextColor.g, nextColor.b, alpha);
+            yield return null;
+        }
     }
 
     public void SwitchMaterial()
@@ -29,37 +54,42 @@ public class MaterialSwitcher : MonoBehaviour
         }
     }
 
-    IEnumerator FadeMaterial()
+public IEnumerator FadeMaterial()
+{
+    Color originalColor = objectRenderer.material.color;
+
+    float t = 3.0f;
+
+    for (; t < fadeTime; t += Time.deltaTime)
     {
-        Color originalColor = objectRenderer.material.color;
-        Color nextColor;
-
-        float t = 0.0f;
-
-        for (; t < fadeTime; t += Time.deltaTime)
-        {
-            objectRenderer.material.color = Color.Lerp(originalColor, blackMaterial.color, t / fadeTime);
-            yield return null;
-        }
-
-        currentMaterialIndex = (currentMaterialIndex + 1) % materials.Length;
-        nextColor = materials[currentMaterialIndex].color;
-
-        for (t = 0.0f; t < fadeTime; t += Time.deltaTime)
-        {
-            objectRenderer.material.color = Color.Lerp(blackMaterial.color, nextColor, t / fadeTime);
-            yield return null;
-        }
-
-        objectRenderer.material.color = nextColor;
+        float alpha = Mathf.Lerp(1, 0, t / fadeTime);
+        objectRenderer.material.color = new Color(originalColor.r, originalColor.g, originalColor.b, alpha);
+        yield return null;
     }
 
-    // New method to fade out and then disable the GameObject.
+    // Switch the material to the next one in the array.
+    currentMaterialIndex = (currentMaterialIndex + 1) % materials.Length;
+    objectRenderer.material = materials[currentMaterialIndex];
+
+    // Reset the color to full opacity before fading in.
+    objectRenderer.material.color = new Color(objectRenderer.material.color.r, objectRenderer.material.color.g, objectRenderer.material.color.b, 1);
+
+    // Fade in the new material.
+    for (t = 3.0f; t < fadeTime; t += Time.deltaTime)
+    {
+        float alpha = Mathf.Lerp(0, 1, t / fadeTime);
+        objectRenderer.material.color = new Color(objectRenderer.material.color.r, objectRenderer.material.color.g, objectRenderer.material.color.b, alpha);
+        yield return null;
+    }
+}
+
+
+
     public void FadeOutAndDisable()
     {
         if (objectRenderer != null)
         {
-            StartCoroutine(FadeOut());
+            StartCoroutine(FadeOutToTransparentAndDisable());
         }
         else
         {
@@ -67,21 +97,24 @@ public class MaterialSwitcher : MonoBehaviour
         }
     }
 
-    IEnumerator FadeOut()
+    public IEnumerator FadeOutToTransparentAndDisable()
     {
-        // The color of the current material.
+        if (objectRenderer == null) yield break;
+        
         Color originalColor = objectRenderer.material.color;
 
-        float t = 0.0f;
-
-        // Fade the current material to black.
-        for (; t < fadeTime; t += Time.deltaTime)
+        for (float t = 5.0f; t < fadeTime; t += Time.deltaTime)
         {
-            objectRenderer.material.color = Color.Lerp(originalColor, blackMaterial.color, t / fadeTime);
+            float alpha = Mathf.Lerp(1, 0, t / fadeTime);
+            objectRenderer.material.color = new Color(originalColor.r, originalColor.g, originalColor.b, alpha);
             yield return null;
         }
 
-        // Disable the GameObject after the fade.
-        gameObject.SetActive(false);
+        objectToFade.SetActive(false);
+    }
+
+    public void StartFadeOutToTransparentAndDisable()
+    {
+        StartCoroutine(FadeOutToTransparentAndDisable());
     }
 }
